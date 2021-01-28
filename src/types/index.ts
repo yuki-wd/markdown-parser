@@ -1,12 +1,8 @@
-export interface Block {
-  type: "paragraph";
-  raw: string;
-  text: string;
-  tokens: Token[];
-}
+export type Block = LeafBlock;
 
-interface Token {
-  type: "text",
-  raw: string;
+type LeafBlock = Paragraph
+
+interface Paragraph {
+  type: "paragraph",
   text: string;
 }
