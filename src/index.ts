@@ -1,25 +1,37 @@
 import { Block } from "./types";
 
 export default function parse(text: string): Block[] {
-  const lines = text.split('\n');
   let blocks: Block[] = [];
+
+  if (text.length === 0) {
+    return blocks;
+  }
+
+  const lines = text.split(/[\r\n]{2,}/);
+  if (lines.length < 1) {
+    return blocks;
+  }
+
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index];
     if (line.length === 0) {
       continue;
     }
+
+    // paragraphs
+    const splittedBySoftBreak = line.split(/(\r|\n)/);
     blocks.push({
       type: "paragraph",
-      raw: line,
-      text: line,
-      tokens: [
-        {
-          type: "text",
-          raw: line,
-          text: line,
-        }
-      ]
-    })
+      text: splittedBySoftBreak
+        .map((t) => {
+          if (t.match(/\r|\n/) !== null) {
+            return t;
+          }
+          return t.trim();
+        })
+        .join(""),
+    });
   }
+
   return blocks;
 }
