@@ -32,6 +32,21 @@ export default function parse(text: string): Block[] {
       continue;
     }
 
+    // atx headings
+    const atxHeadingsMatch = line.match(/^ {0,3}(?<atx>#{1,6})(?<text> .*|$)/);
+    if (atxHeadingsMatch?.groups != null) {
+      if (openBlock != null) {
+        blocks.push(openBlock);
+        openBlock = undefined;
+      }
+      openBlock = {
+        type: "heading",
+        level: atxHeadingsMatch.groups.atx.length as 1 | 2 | 3 | 4 | 5 | 6,
+        text: atxHeadingsMatch.groups.text.replace(/ #{1,} {0,}$/, "").trim(),
+      };
+      continue;
+    }
+
     // paragraphs
     if (openBlock != null && openBlock.type !== "paragraph") {
       blocks.push(openBlock);
