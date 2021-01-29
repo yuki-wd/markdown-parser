@@ -1,7 +1,7 @@
 import { Block } from "./types";
 
 export default function parse(text: string): Block[] {
-  let blocks: Block[] = [];
+  const blocks: Block[] = [];
 
   if (text.length === 0) {
     return blocks;
