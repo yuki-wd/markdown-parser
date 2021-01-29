@@ -1,8 +1,8 @@
 export type Block = LeafBlock;
 
-type LeafBlock = Paragraph
+type LeafBlock = Paragraph;
 
 interface Paragraph {
-  type: "paragraph",
+  type: "paragraph";
   text: string;
 }
