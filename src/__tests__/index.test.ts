@@ -209,3 +209,234 @@ describe("Thematic breaks", () => {
     expect(parse(text)).toEqual(block);
   });
 });
+
+describe("ATX headings", () => {
+  test("Simple headings", () => {
+    const text = "# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 1,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 3,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 4,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 5,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 6,
+        text: "foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("More than six `#` characters is not a heading", () => {
+    const text = "####### foo";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "####### foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("At least one space is required between the `#` characters and the heading’s contents, unless the heading is empty", () => {
+    const text = "#5 bolt\n\n#hashtag\n\n#";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "#5 bolt",
+      },
+      {
+        type: "paragraph",
+        text: "#hashtag",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Leading and trailing whitespace is ignored in parsing inline content", () => {
+    const text = "#                  foo                     ";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 1,
+        text: "foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("One to three spaces indentation are allowed", () => {
+    const text = " ### foo\n  ## foo\n   # foo";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 3,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Four spaces are too much", () => {
+    const text = "foo\n    # bar";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "foo\n# bar",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("A closing sequence of `#` characters is optional:", () => {
+    const text = "## foo ##\n  ###   bar   ###";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 2,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 3,
+        text: "bar",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("A closing sequence of `#` characters need not be the same length as the opening sequence", () => {
+    const text = "# foo ##################################\n##### foo ##";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 1,
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 5,
+        text: "foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Spaces are allowed after the closing sequence", () => {
+    const text = "### foo ###     ";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 3,
+        text: "foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("A sequence of `#` characters with anything but spaces following it is not a closing sequence, but counts as part of the contents of the heading", () => {
+    const text = "### foo ### b";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 3,
+        text: "foo ### b",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("The closing sequence must be preceded by a space", () => {
+    const text = "# foo#";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 1,
+        text: "foo#",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("ATX headings need not be separated from surrounding content by blank lines, and they can interrupt paragraphs", () => {
+    const text = "****\n## foo\n****";
+    const block: Block[] = [
+      {
+        type: "thematic-break",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "foo",
+      },
+      {
+        type: "thematic-break",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+
+    const text2 = "Foo bar\n# baz\nBar foo";
+    const block2: Block[] = [
+      {
+        type: "paragraph",
+        text: "Foo bar",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "baz",
+      },
+      {
+        type: "paragraph",
+        text: "Bar foo",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+  });
+  test("ATX headings can be empty", () => {
+    const text = "## \n#\n### ###";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 2,
+        text: "",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "",
+      },
+      {
+        type: "heading",
+        level: 3,
+        text: "",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+});
