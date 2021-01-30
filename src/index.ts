@@ -20,6 +20,21 @@ export default function parse(text: string): Block[] {
       continue;
     }
 
+    // setext headings
+    const setextHeadingMatch = line.match(/^ {0,3}(?<level>-{1,}|={1,}) {0,}$/);
+    if (
+      openBlock != null &&
+      openBlock.type === "paragraph" &&
+      setextHeadingMatch?.groups != null
+    ) {
+      openBlock = {
+        type: "heading",
+        level: setextHeadingMatch.groups.level[0] === "-" ? 2 : 1,
+        text: openBlock.text,
+      };
+      continue;
+    }
+
     // thematic breaks
     if (line.match(/^ {0,3}([-_*] {0,}){3,}$/)) {
       if (openBlock != null) {

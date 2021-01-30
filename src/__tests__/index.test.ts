@@ -440,3 +440,148 @@ describe("ATX headings", () => {
     expect(parse(text)).toEqual(block);
   });
 });
+
+describe("Setext headings", () => {
+  test("The underlining can be any length", () => {
+    const text = "Foo\n-------------------------\n\nFoo\n=";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 2,
+        text: "Foo",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "Foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("The heading content can be indented up to three spaces, and need not line up with the underlining", () => {
+    const text = "  Foo\n---\n\n  Foo\n-----\n\n Foo\n  ===";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 2,
+        text: "Foo",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "Foo",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "Foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("The setext heading underline can be indented up to three spaces, and may have trailing spaces", () => {
+    const text = "Foo\n   ----      ";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 2,
+        text: "Foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Four spaces is too much", () => {
+    const text = "Foo\n    ---";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "Foo\n---",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("The setext heading underline cannot contain internal spaces", () => {
+    const text = "Foo\n= =\n\nFoo\n--- -";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "Foo\n= =",
+      },
+      {
+        type: "paragraph",
+        text: "Foo",
+      },
+      {
+        type: "thematic-break",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Trailing spaces in the content line do not cause a line break", () => {
+    const text = "Foo  \n-----";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 2,
+        text: "Foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("A blank line is needed between a paragraph and a following setext heading, since otherwise the paragraph becomes part of the heading’s content", () => {
+    const text = "Foo\nBar\n---";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 2,
+        text: "Foo\nBar",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("A blank line is not required before or after setext headings", () => {
+    const text = "---\nFoo\n---\nBar\n---\nBaz";
+    const block: Block[] = [
+      {
+        type: "thematic-break",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "Foo",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "Bar",
+      },
+      {
+        type: "paragraph",
+        text: "Baz",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Setext headings cannot be empty", () => {
+    const text = "\n====";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "====",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Setext heading text lines must not be interpretable as block constructs other than paragraphs", () => {
+    const text = "---\n---";
+    const block: Block[] = [
+      {
+        type: "thematic-break",
+      },
+      {
+        type: "thematic-break",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+});
