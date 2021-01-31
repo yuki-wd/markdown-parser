@@ -1,6 +1,6 @@
 export type Block = LeafBlock;
 
-type LeafBlock = Paragraph | ThematicBreak | Heading;
+type LeafBlock = Paragraph | ThematicBreak | Heading | CodeBlock;
 
 interface Paragraph {
   type: "paragraph";
@@ -15,4 +15,9 @@ interface Heading {
   type: "heading";
   text: string;
   level: 1 | 2 | 3 | 4 | 5 | 6;
+}
+
+interface CodeBlock {
+  type: "code-block";
+  text: string;
 }
