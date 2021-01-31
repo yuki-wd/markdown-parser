@@ -585,3 +585,127 @@ describe("Setext headings", () => {
     expect(parse(text)).toEqual(block);
   });
 });
+
+describe("Indented code blocks", () => {
+  test("a simple indented code block", () => {
+    const text = "    a simple\n      indented code block";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "a simple\n  indented code block",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("The contents of a code block are literal text, and do not get parsed as Markdown", () => {
+    const text = "    <a/>\n    *hi*\n\n    - one";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "<a/>\n*hi*\n\n- one",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("It continues even if it is separated by blank lines", () => {
+    const text = "    chunk1\n\n    chunk2\n  \n \n \n    chunk3";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "chunk1\n\nchunk2\n\n\n\nchunk3",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Any initial spaces beyond four will be included in the content, even in interior blank lines", () => {
+    const text = "    chunk1\n      \n      chunk2";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "chunk1\n  \n  chunk2",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("An indented code block cannot interrupt a paragraph", () => {
+    const text = "Foo\n    bar";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "Foo\nbar",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Any non-blank line with fewer than four leading spaces ends the code block immediately.", () => {
+    const text = "    foo\nbar";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "foo",
+      },
+      {
+        type: "paragraph",
+        text: "bar",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("indented code can occur immediately before and after other kinds of blocks", () => {
+    const text = "# Heading\n    foo\nHeading\n------\n    foo\n----";
+    const block: Block[] = [
+      {
+        type: "heading",
+        level: 1,
+        text: "Heading",
+      },
+      {
+        type: "code-block",
+        text: "foo",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "Heading",
+      },
+      {
+        type: "code-block",
+        text: "foo",
+      },
+      {
+        type: "thematic-break",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("The first line can be indented more than four spaces", () => {
+    const text = "        foo\n    bar";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "    foo\nbar",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Blank lines preceding or following an indented code block are not included in it", () => {
+    const text = "    \n    foo\n    ";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "foo",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Trailing spaces are included in the code block’s content", () => {
+    const text = "    foo  ";
+    const block: Block[] = [
+      {
+        type: "code-block",
+        text: "foo  ",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+});
