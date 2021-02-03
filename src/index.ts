@@ -1,4 +1,6 @@
-import { Block } from "./types";
+import { Block, FencedCodeBlock } from "./types";
+
+const FENCED_CODE_BLOCK_REGEX = /^ {0,3}(?<marker>`{3,}|~{3,}) {0,}(?<info>.+)?$/;
 
 export default function parse(text: string): Block[] {
   const blocks: Block[] = [];
@@ -14,10 +16,17 @@ export default function parse(text: string): Block[] {
     const line = lines[index];
     if (line.trim().length === 0) {
       if (openBlock != null) {
-        if (openBlock.type === "code-block") {
+        if (openBlock.type === "indented-code-block") {
           openBlock = {
-            type: "code-block",
+            type: "indented-code-block",
             text: [openBlock.text, line.replace(/^ {0,4}/, "")].join("\n"),
+          };
+          continue;
+        } else if (openBlock.type === "fenced-code-block") {
+          openBlock = {
+            ...(openBlock as FencedCodeBlock),
+            raw: [openBlock.raw, line].join("\n"),
+            text: [openBlock.text, line].join("\n"),
           };
           continue;
         } else {
@@ -70,13 +79,14 @@ export default function parse(text: string): Block[] {
       continue;
     }
 
-    // code blocks
+    // indented code blocks
     if (line.match(/^ {4,}.+/)) {
       const text = line.replace(/^ {0,4}/, "");
       if (
         openBlock != null &&
         openBlock.type !== "paragraph" &&
-        openBlock.type !== "code-block"
+        openBlock.type !== "indented-code-block" &&
+        openBlock.type !== "fenced-code-block"
       ) {
         blocks.push(closeBlock(openBlock));
         openBlock = undefined;
@@ -84,15 +94,52 @@ export default function parse(text: string): Block[] {
 
       if (openBlock == null) {
         openBlock = {
-          type: "code-block",
+          type: "indented-code-block",
           text: text,
         };
         continue;
       }
-      if (openBlock.type === "code-block") {
+      if (openBlock.type === "indented-code-block") {
         openBlock = {
-          type: "code-block",
+          type: "indented-code-block",
           text: [openBlock.text, text].join("\n"),
+        };
+        continue;
+      }
+    }
+
+    // fenced code blocks
+    const fencedCodeBlockMatch = line.match(FENCED_CODE_BLOCK_REGEX);
+    if (fencedCodeBlockMatch) {
+      if (openBlock != null) {
+        if (openBlock.type === "fenced-code-block") {
+          const endMarker = fencedCodeBlockMatch.groups?.marker;
+          const startMarker = openBlock.raw
+            .split("\n")[0]
+            .match(FENCED_CODE_BLOCK_REGEX)?.groups?.marker;
+          if (
+            endMarker != null &&
+            startMarker != null &&
+            fencedCodeBlockMatch.groups?.info == null &&
+            endMarker[0] === startMarker[0] &&
+            endMarker.length >= startMarker.length
+          ) {
+            blocks.push(closeBlock(openBlock, line));
+            openBlock = undefined;
+            continue;
+          }
+        } else {
+          blocks.push(closeBlock(openBlock));
+          openBlock = undefined;
+        }
+      }
+
+      if (openBlock == null) {
+        openBlock = {
+          type: "fenced-code-block",
+          raw: line,
+          text: "",
+          info: fencedCodeBlockMatch.groups?.info,
         };
         continue;
       }
@@ -100,6 +147,23 @@ export default function parse(text: string): Block[] {
 
     // paragraphs
     if (openBlock != null && openBlock.type !== "paragraph") {
+      if (openBlock.type === "fenced-code-block") {
+        const indent = openBlock.raw.match(/^(?<indent> {1,3})/);
+        const indentLength =
+          indent !== null && indent.groups != null
+            ? indent.groups.indent.length
+            : 0;
+        const newOpenBlock: FencedCodeBlock = {
+          ...openBlock,
+          raw: [openBlock.raw, line].join("\n"),
+          text: [
+            openBlock.text,
+            line.replace(new RegExp(`^ {0,${indentLength}}`), ""),
+          ].join("\n"),
+        };
+        openBlock = newOpenBlock;
+        continue;
+      }
       blocks.push(closeBlock(openBlock));
       openBlock = undefined;
     }
@@ -125,8 +189,8 @@ export default function parse(text: string): Block[] {
  * close状態にする
  * @param block open状態のblock
  */
-function closeBlock(block: Block): Block {
-  if (block.type === "code-block") {
+function closeBlock(block: Block, line?: string): Block {
+  if (block.type === "indented-code-block") {
     const newText = block.text
       .split("\n")
       .filter((v, i, array) => {
@@ -138,6 +202,19 @@ function closeBlock(block: Block): Block {
       .join("\n");
     return {
       ...block,
+      text: newText,
+    };
+  }
+  if (block.type === "fenced-code-block") {
+    const newText = block.text
+      .split("\n")
+      .filter((v, i) => {
+        return i !== 0;
+      })
+      .join("\n");
+    return {
+      ...block,
+      raw: line ? [block.raw, line].join("\n") : block.raw,
       text: newText,
     };
   }

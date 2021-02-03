@@ -591,7 +591,7 @@ describe("Indented code blocks", () => {
     const text = "    a simple\n      indented code block";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "a simple\n  indented code block",
       },
     ];
@@ -601,7 +601,7 @@ describe("Indented code blocks", () => {
     const text = "    <a/>\n    *hi*\n\n    - one";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "<a/>\n*hi*\n\n- one",
       },
     ];
@@ -611,7 +611,7 @@ describe("Indented code blocks", () => {
     const text = "    chunk1\n\n    chunk2\n  \n \n \n    chunk3";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "chunk1\n\nchunk2\n\n\n\nchunk3",
       },
     ];
@@ -621,7 +621,7 @@ describe("Indented code blocks", () => {
     const text = "    chunk1\n      \n      chunk2";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "chunk1\n  \n  chunk2",
       },
     ];
@@ -641,7 +641,7 @@ describe("Indented code blocks", () => {
     const text = "    foo\nbar";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "foo",
       },
       {
@@ -660,7 +660,7 @@ describe("Indented code blocks", () => {
         text: "Heading",
       },
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "foo",
       },
       {
@@ -669,7 +669,7 @@ describe("Indented code blocks", () => {
         text: "Heading",
       },
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "foo",
       },
       {
@@ -682,7 +682,7 @@ describe("Indented code blocks", () => {
     const text = "        foo\n    bar";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "    foo\nbar",
       },
     ];
@@ -692,7 +692,7 @@ describe("Indented code blocks", () => {
     const text = "    \n    foo\n    ";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "foo",
       },
     ];
@@ -702,8 +702,309 @@ describe("Indented code blocks", () => {
     const text = "    foo  ";
     const block: Block[] = [
       {
-        type: "code-block",
+        type: "indented-code-block",
         text: "foo  ",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+});
+
+describe("Fenced code blocks", () => {
+  test("simple", () => {
+    const text = "```\n<\n >\n```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "<\n >",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("with tildes", () => {
+    const text = "~~~\n<\n >\n~~~";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "<\n >",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Fewer than three backticks is not enough", () => {
+    // TODO: inline code span実装にテスト修正必要
+    const text = "``\nfoo\n``";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "``\nfoo\n``",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("The closing code fence must use the same character as the opening fence", () => {
+    const text = "```\naaa\n~~~\n```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "aaa\n~~~",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+    const text2 = "~~~\naaa\n```\n~~~";
+    const block2: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text2,
+        text: "aaa\n```",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+  });
+  test("The closing code fence must be at least as long as the opening fence", () => {
+    const text = "````\naaa\n```\n``````";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "aaa\n```",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+    const text2 = "~~~~\naaa\n~~~\n~~~~";
+    const block2: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text2,
+        text: "aaa\n~~~",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+  });
+  test("Unclosed code blocks are closed by the end of the document", () => {
+    // TODO: add block quote or list item pattern (Example 98)
+    const text = "```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+    const text2 = "``````\n\n```\naaa";
+    const block2: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text2,
+        text: "\n```\naaa",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+  });
+  test("it can have all empty lines as its content", () => {
+    const text = "```\n\n  \n```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "\n  ",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("A code block can be empty", () => {
+    const text = "```\n```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Fences can be indented", () => {
+    const text = " ```\n aaa\naaa\n```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "aaa\naaa",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+
+    const text2 = "  ```\naaa\n  aaa\naaa\n  ```";
+    const block2: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text2,
+        text: "aaa\naaa\naaa",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+
+    const text3 = "   ```\n   aaa\n    aaa\n  aaa\n   ```";
+    const block3: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text3,
+        text: "aaa\n aaa\naaa",
+      },
+    ];
+    expect(parse(text3)).toEqual(block3);
+  });
+  test("Four spaces indentation produces an indented code block", () => {
+    const text = "    ```\n    aaa\n    ```";
+    const block: Block[] = [
+      {
+        type: "indented-code-block",
+        text: "```\naaa\n```",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Closing fences may be indented by 0-3 spaces, and their indentation need not match that of the opening fence", () => {
+    const text = "```\naaa\n  ```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "aaa",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+
+    const text2 = "   ```\naaa\n  ```";
+    const block2: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text2,
+        text: "aaa",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+  });
+  test("This is not a closing fence, because it is indented 4 spaces", () => {
+    const text = "```\naaa\n    ```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "aaa\n    ```",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Code fences (opening and closing) cannot contain internal spaces", () => {
+    const text2 = "~~~~~~\naaa\n~~~ ~~";
+    const block2: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text2,
+        text: "aaa\n~~~ ~~",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+  });
+  test("Fenced code blocks can interrupt paragraphs, and can be followed directly by paragraphs, without a blank line between", () => {
+    const text = "foo\n```\nbar\n```\nbaz";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "foo",
+      },
+      {
+        type: "fenced-code-block",
+        raw: "```\nbar\n```",
+        text: "bar",
+      },
+      {
+        type: "paragraph",
+        text: "baz",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Other blocks can also occur before and after fenced code blocks without an intervening blank line", () => {
+    const text = "foo\n---\n~~~\nbar\n~~~\n# baz";
+    const block: Block[] = [
+      {
+        type: "heading",
+        text: "foo",
+        level: 2,
+      },
+      {
+        type: "fenced-code-block",
+        text: "bar",
+        raw: "~~~\nbar\n~~~",
+      },
+      {
+        type: "heading",
+        text: "baz",
+        level: 1,
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("An info string can be provided after the opening code fence.", () => {
+    const text = "```ruby\ndef foo(x)\n  return 3\nend\n```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "def foo(x)\n  return 3\nend",
+        info: "ruby",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+
+    const text2 =
+      "~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~";
+    const block2: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text2,
+        text: "def foo(x)\n  return 3\nend",
+        info: "ruby startline=3 $%@#$",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+
+    const text3 = "````;\n````";
+    const block3: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text3,
+        text: "",
+        info: ";",
+      },
+    ];
+    expect(parse(text3)).toEqual(block3);
+  });
+  test("Info strings for tilde code blocks can contain backticks and tildes", () => {
+    const text = "~~~ aa ``` ~~~\nfoo\n~~~";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "foo",
+        info: "aa ``` ~~~",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Closing code fences cannot have info strings", () => {
+    const text = "```\n```aaa\n```";
+    const block: Block[] = [
+      {
+        type: "fenced-code-block",
+        raw: text,
+        text: "```aaa",
       },
     ];
     expect(parse(text)).toEqual(block);
