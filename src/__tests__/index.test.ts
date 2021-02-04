@@ -1033,3 +1033,36 @@ describe("Fenced code blocks", () => {
     expect(parse(text)).toEqual(block);
   });
 });
+
+describe("Blank lines", () => {
+  test("Blank lines between block-level elements are ignored", () => {
+    const text = "aaa\n  \n\n# aaa\n";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "aaa",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "aaa",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+  test("Blank lines at the beginning and end of the document are also ignored.", () => {
+    const text = "  \n\naaa\n  \n\n# aaa\n\n  ";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "aaa",
+      },
+      {
+        type: "heading",
+        level: 1,
+        text: "aaa",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+  });
+});
