@@ -70,6 +70,29 @@ describe("Paragraphs", () => {
     ];
     expect(parse(text)).toEqual(block);
   });
+  test("the first line may be indented at most three spaces, or an indented code block will be triggered", () => {
+    const text = "   aaa\nbbb";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "aaa\nbbb",
+      },
+    ];
+    expect(parse(text)).toEqual(block);
+
+    const text2 = "    aaa\nbbb";
+    const block2: Block[] = [
+      {
+        type: "indented-code-block",
+        text: "aaa",
+      },
+      {
+        type: "paragraph",
+        text: "bbb",
+      },
+    ];
+    expect(parse(text2)).toEqual(block2);
+  });
 });
 
 describe("Thematic breaks", () => {
