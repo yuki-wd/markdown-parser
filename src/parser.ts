@@ -4,30 +4,32 @@ const FENCED_CODE_BLOCK_REGEX = /^(?<marker> {0,3}(?:`{3,}|~{3,})) {0,}(?<info>.
 
 interface State {
   ast: Block[];
-  openBlock: Block | undefined;
+  openBlock?: Block;
+  childrenState?: State;
 }
 
 class Parser {
-  private blocks: Block[] = [];
-  private openBlock: Block | undefined;
+  private state: State = {
+    ast: [],
+  };
+
   public parse(markdown: string): Block[] {
     const lines = markdown.split(/[\r\n]/);
     for (const line of lines) {
-      const state = this.parseLine(line, {
-        ast: this.blocks,
-        openBlock: this.openBlock,
-      });
-      this.blocks = state.ast;
-      this.openBlock = state.openBlock;
+      const state = this.parseLine(line, this.state);
+      this.state = state;
     }
-    const result = this.close({
-      ast: this.blocks,
-      openBlock: this.openBlock,
-    });
+    const result = this.close(this.state);
     return result.ast;
   }
 
-  private parseLine(line: string, state: State): State {
+  private parseLine(
+    line: string,
+    state: State | undefined = {
+      ast: [],
+      openBlock: undefined,
+    }
+  ): State {
     if (line.trim().length === 0) {
       if (state.openBlock?.type === "indented-code-block") {
         return {
@@ -56,14 +58,14 @@ class Parser {
     const setextHeadingMatch = line.match(/^ {0,3}(?<level>-{1,}|={1,}) {0,}$/);
     if (
       setextHeadingMatch?.groups != null &&
-      this.openBlock?.type === "paragraph"
+      state.openBlock?.type === "paragraph"
     ) {
       return {
         ...state,
         openBlock: {
           type: "heading",
           level: setextHeadingMatch.groups.level[0] === "-" ? 2 : 1,
-          text: this.openBlock.text,
+          text: state.openBlock.text,
         },
       };
     }
@@ -107,6 +109,7 @@ class Parser {
     if (
       line.match(/^ {4,}.+/) &&
       state.openBlock?.type !== "paragraph" &&
+      state.childrenState?.openBlock?.type !== "paragraph" &&
       state.openBlock?.type !== "fenced-code-block"
     ) {
       const text = line.replace(/^ {0,4}/, "");
@@ -158,6 +161,40 @@ class Parser {
       }
     }
 
+    // Block quotes
+    const blockQuotesMatch = line.match(/^ {0,3}> {0,1}(?<text>.*)$/);
+    if (
+      blockQuotesMatch?.groups != null &&
+      state.openBlock?.type !== "fenced-code-block" &&
+      state.openBlock?.type !== "indented-code-block"
+    ) {
+      if (state.openBlock?.type !== "block-quote") {
+        const childrenState = this.parseLine(blockQuotesMatch.groups.text, {
+          ast: [],
+        });
+        return {
+          ...this.close(state),
+          openBlock: {
+            type: "block-quote",
+            children: childrenState.ast,
+          },
+          childrenState: childrenState,
+        };
+      }
+      const childrenState = this.parseLine(
+        blockQuotesMatch.groups.text,
+        state.childrenState
+      );
+      return {
+        ...state,
+        openBlock: {
+          ...state.openBlock,
+          children: childrenState.ast,
+        },
+        childrenState: childrenState,
+      };
+    }
+
     // Paragraphs
     if (state.openBlock?.type === "paragraph") {
       return {
@@ -166,6 +203,17 @@ class Parser {
           type: "paragraph",
           text: [state.openBlock.text, line.trim()].join("\n"),
         },
+      };
+    }
+    if (state.openBlock?.type === "block-quote" && this.isLaziness(state)) {
+      const childrenState = this.parseLine(line, state.childrenState);
+      return {
+        ...state,
+        openBlock: {
+          ...state.openBlock,
+          children: childrenState.ast,
+        },
+        childrenState: childrenState,
       };
     }
     if (state.openBlock?.type === "fenced-code-block") {
@@ -192,6 +240,13 @@ class Parser {
         text: line.trim(),
       },
     };
+  }
+
+  private isLaziness(state: State): boolean {
+    if (state.childrenState == null) {
+      return state.openBlock?.type === "paragraph";
+    }
+    return this.isLaziness(state.childrenState);
   }
 
   private close(state: State): State {
@@ -230,6 +285,18 @@ class Parser {
         }),
         openBlock: undefined,
       };
+    }
+    if (state.openBlock.type === "block-quote") {
+      if (state.childrenState != null) {
+        const closedChildren = this.close(state.childrenState);
+        return {
+          ast: state.ast.concat({
+            ...state.openBlock,
+            children: closedChildren.ast,
+          }),
+          openBlock: undefined,
+        };
+      }
     }
     return {
       ast: state.ast.concat(state.openBlock),
