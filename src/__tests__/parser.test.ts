@@ -1,9 +1,5 @@
-import parse from "..";
+import Parser from "../parser";
 import { Block } from "../types";
-
-test("empty", () => {
-  expect(parse("")).toEqual([]);
-});
 
 describe("Paragraphs", () => {
   test("A simple example with two paragraphs", () => {
@@ -18,8 +14,8 @@ describe("Paragraphs", () => {
         text: "bbb",
       },
     ];
-    const r = parse(text);
-    expect(r).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Paragraphs can contain multiple lines, but no blank lines", () => {
     const text = "aaa\nbbb\n\nccc\nddd";
@@ -33,7 +29,8 @@ describe("Paragraphs", () => {
         text: "ccc\nddd",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Multiple blank lines between paragraph have no effect", () => {
     const text = "aaa\n\n\nbbb";
@@ -47,7 +44,8 @@ describe("Paragraphs", () => {
         text: "bbb",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Leading spaces are skipped", () => {
     const text = "  aaa\n bbb";
@@ -57,7 +55,8 @@ describe("Paragraphs", () => {
         text: "aaa\nbbb",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Lines after the first may be indented any amount, since indented code blocks cannot interrupt paragraphs", () => {
     const text =
@@ -68,7 +67,8 @@ describe("Paragraphs", () => {
         text: "aaa\nbbb\nccc",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("the first line may be indented at most three spaces, or an indented code block will be triggered", () => {
     const text = "   aaa\nbbb";
@@ -78,7 +78,8 @@ describe("Paragraphs", () => {
         text: "aaa\nbbb",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
 
     const text2 = "    aaa\nbbb";
     const block2: Block[] = [
@@ -91,7 +92,9 @@ describe("Paragraphs", () => {
         text: "bbb",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
 });
 
@@ -109,7 +112,8 @@ describe("Thematic breaks", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Wrong characters", () => {
     const text = "+++";
@@ -119,10 +123,12 @@ describe("Thematic breaks", () => {
         text: "+++",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
     const text2 = "===";
     const block2: Block[] = [{ type: "paragraph", text: "===" }];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
   test("Not enough characters", () => {
     const text = "--\n**\n__";
@@ -132,7 +138,8 @@ describe("Thematic breaks", () => {
         text: "--\n**\n__",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("One to three spaces indent are allowed", () => {
     const text = " ***\n  ***\n   ***";
@@ -147,7 +154,8 @@ describe("Thematic breaks", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Four spaces is too many", () => {
     const text = "Foo\n    ***";
@@ -157,7 +165,8 @@ describe("Thematic breaks", () => {
         text: "Foo\n***",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("More than three characters may be used", () => {
     const text = "_____________________________________";
@@ -166,7 +175,8 @@ describe("Thematic breaks", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Spaces are allowed between the characters", () => {
     const text = " - - -";
@@ -175,26 +185,30 @@ describe("Thematic breaks", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
     const text2 = " **  * ** * ** * **";
     const block2: Block[] = [
       {
         type: "thematic-break",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
     const text3 = "-     -      -      -";
     const block3: Block[] = [
       {
         type: "thematic-break",
       },
     ];
-    expect(parse(text3)).toEqual(block3);
+    const parser3 = new Parser();
+    expect(parser3.parse(text3)).toEqual(block3);
   });
   test("Spaces are allowed at the end", () => {
     const text = "- - - -    ";
     const block: Block[] = [{ type: "thematic-break" }];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("No other characters may occur in the line", () => {
     const text = "_ _ _ _ a\n\na------\n\n---a---";
@@ -212,7 +226,8 @@ describe("Thematic breaks", () => {
         text: "---a---",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Thematic breaks can interrupt a paragraph", () => {
     const text = "Foo\n***\nbar";
@@ -229,7 +244,8 @@ describe("Thematic breaks", () => {
         text: "bar",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
 });
 
@@ -268,7 +284,8 @@ describe("ATX headings", () => {
         text: "foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("More than six `#` characters is not a heading", () => {
     const text = "####### foo";
@@ -278,7 +295,8 @@ describe("ATX headings", () => {
         text: "####### foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("At least one space is required between the `#` characters and the heading’s contents, unless the heading is empty", () => {
     const text = "#5 bolt\n\n#hashtag\n\n#";
@@ -297,7 +315,8 @@ describe("ATX headings", () => {
         text: "",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Leading and trailing whitespace is ignored in parsing inline content", () => {
     const text = "#                  foo                     ";
@@ -308,7 +327,8 @@ describe("ATX headings", () => {
         text: "foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("One to three spaces indentation are allowed", () => {
     const text = " ### foo\n  ## foo\n   # foo";
@@ -329,7 +349,8 @@ describe("ATX headings", () => {
         text: "foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Four spaces are too much", () => {
     const text = "foo\n    # bar";
@@ -339,7 +360,8 @@ describe("ATX headings", () => {
         text: "foo\n# bar",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("A closing sequence of `#` characters is optional:", () => {
     const text = "## foo ##\n  ###   bar   ###";
@@ -355,7 +377,8 @@ describe("ATX headings", () => {
         text: "bar",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("A closing sequence of `#` characters need not be the same length as the opening sequence", () => {
     const text = "# foo ##################################\n##### foo ##";
@@ -371,7 +394,8 @@ describe("ATX headings", () => {
         text: "foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Spaces are allowed after the closing sequence", () => {
     const text = "### foo ###     ";
@@ -382,7 +406,8 @@ describe("ATX headings", () => {
         text: "foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("A sequence of `#` characters with anything but spaces following it is not a closing sequence, but counts as part of the contents of the heading", () => {
     const text = "### foo ### b";
@@ -393,7 +418,8 @@ describe("ATX headings", () => {
         text: "foo ### b",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("The closing sequence must be preceded by a space", () => {
     const text = "# foo#";
@@ -404,7 +430,8 @@ describe("ATX headings", () => {
         text: "foo#",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("ATX headings need not be separated from surrounding content by blank lines, and they can interrupt paragraphs", () => {
     const text = "****\n## foo\n****";
@@ -421,7 +448,8 @@ describe("ATX headings", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
 
     const text2 = "Foo bar\n# baz\nBar foo";
     const block2: Block[] = [
@@ -439,7 +467,8 @@ describe("ATX headings", () => {
         text: "Bar foo",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
   test("ATX headings can be empty", () => {
     const text = "## \n#\n### ###";
@@ -460,7 +489,8 @@ describe("ATX headings", () => {
         text: "",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
 });
 
@@ -479,7 +509,8 @@ describe("Setext headings", () => {
         text: "Foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("The heading content can be indented up to three spaces, and need not line up with the underlining", () => {
     const text = "  Foo\n---\n\n  Foo\n-----\n\n Foo\n  ===";
@@ -500,7 +531,8 @@ describe("Setext headings", () => {
         text: "Foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("The setext heading underline can be indented up to three spaces, and may have trailing spaces", () => {
     const text = "Foo\n   ----      ";
@@ -511,7 +543,8 @@ describe("Setext headings", () => {
         text: "Foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Four spaces is too much", () => {
     const text = "Foo\n    ---";
@@ -521,7 +554,8 @@ describe("Setext headings", () => {
         text: "Foo\n---",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("The setext heading underline cannot contain internal spaces", () => {
     const text = "Foo\n= =\n\nFoo\n--- -";
@@ -538,7 +572,8 @@ describe("Setext headings", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Trailing spaces in the content line do not cause a line break", () => {
     const text = "Foo  \n-----";
@@ -549,7 +584,8 @@ describe("Setext headings", () => {
         text: "Foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("A blank line is needed between a paragraph and a following setext heading, since otherwise the paragraph becomes part of the heading’s content", () => {
     const text = "Foo\nBar\n---";
@@ -560,7 +596,8 @@ describe("Setext headings", () => {
         text: "Foo\nBar",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("A blank line is not required before or after setext headings", () => {
     const text = "---\nFoo\n---\nBar\n---\nBaz";
@@ -583,7 +620,8 @@ describe("Setext headings", () => {
         text: "Baz",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Setext headings cannot be empty", () => {
     const text = "\n====";
@@ -593,7 +631,8 @@ describe("Setext headings", () => {
         text: "====",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Setext heading text lines must not be interpretable as block constructs other than paragraphs", () => {
     const text = "---\n---";
@@ -605,7 +644,8 @@ describe("Setext headings", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
 });
 
@@ -618,7 +658,8 @@ describe("Indented code blocks", () => {
         text: "a simple\n  indented code block",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("The contents of a code block are literal text, and do not get parsed as Markdown", () => {
     const text = "    <a/>\n    *hi*\n\n    - one";
@@ -628,7 +669,8 @@ describe("Indented code blocks", () => {
         text: "<a/>\n*hi*\n\n- one",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("It continues even if it is separated by blank lines", () => {
     const text = "    chunk1\n\n    chunk2\n  \n \n \n    chunk3";
@@ -638,7 +680,8 @@ describe("Indented code blocks", () => {
         text: "chunk1\n\nchunk2\n\n\n\nchunk3",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Any initial spaces beyond four will be included in the content, even in interior blank lines", () => {
     const text = "    chunk1\n      \n      chunk2";
@@ -648,7 +691,8 @@ describe("Indented code blocks", () => {
         text: "chunk1\n  \n  chunk2",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("An indented code block cannot interrupt a paragraph", () => {
     const text = "Foo\n    bar";
@@ -658,7 +702,8 @@ describe("Indented code blocks", () => {
         text: "Foo\nbar",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Any non-blank line with fewer than four leading spaces ends the code block immediately.", () => {
     const text = "    foo\nbar";
@@ -672,7 +717,8 @@ describe("Indented code blocks", () => {
         text: "bar",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("indented code can occur immediately before and after other kinds of blocks", () => {
     const text = "# Heading\n    foo\nHeading\n------\n    foo\n----";
@@ -699,7 +745,8 @@ describe("Indented code blocks", () => {
         type: "thematic-break",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("The first line can be indented more than four spaces", () => {
     const text = "        foo\n    bar";
@@ -709,7 +756,8 @@ describe("Indented code blocks", () => {
         text: "    foo\nbar",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Blank lines preceding or following an indented code block are not included in it", () => {
     const text = "    \n    foo\n    ";
@@ -719,7 +767,8 @@ describe("Indented code blocks", () => {
         text: "foo",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Trailing spaces are included in the code block’s content", () => {
     const text = "    foo  ";
@@ -729,7 +778,8 @@ describe("Indented code blocks", () => {
         text: "foo  ",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
 });
 
@@ -739,22 +789,25 @@ describe("Fenced code blocks", () => {
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "<\n >",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    const result = parser.parse(text);
+    expect(result).toEqual(block);
   });
   test("with tildes", () => {
     const text = "~~~\n<\n >\n~~~";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "~~~",
         text: "<\n >",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Fewer than three backticks is not enough", () => {
     // TODO: inline code span実装にテスト修正必要
@@ -765,47 +818,52 @@ describe("Fenced code blocks", () => {
         text: "``\nfoo\n``",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("The closing code fence must use the same character as the opening fence", () => {
     const text = "```\naaa\n~~~\n```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "aaa\n~~~",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
     const text2 = "~~~\naaa\n```\n~~~";
     const block2: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text2,
+        marker: "~~~",
         text: "aaa\n```",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
   test("The closing code fence must be at least as long as the opening fence", () => {
     const text = "````\naaa\n```\n``````";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "````",
         text: "aaa\n```",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
     const text2 = "~~~~\naaa\n~~~\n~~~~";
     const block2: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text2,
+        marker: "~~~~",
         text: "aaa\n~~~",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
   test("Unclosed code blocks are closed by the end of the document", () => {
     // TODO: add block quote or list item pattern (Example 98)
@@ -813,73 +871,80 @@ describe("Fenced code blocks", () => {
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
     const text2 = "``````\n\n```\naaa";
     const block2: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text2,
+        marker: "``````",
         text: "\n```\naaa",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
   test("it can have all empty lines as its content", () => {
     const text = "```\n\n  \n```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "\n  ",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("A code block can be empty", () => {
     const text = "```\n```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Fences can be indented", () => {
     const text = " ```\n aaa\naaa\n```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: " ```",
         text: "aaa\naaa",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
 
     const text2 = "  ```\naaa\n  aaa\naaa\n  ```";
     const block2: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text2,
+        marker: "  ```",
         text: "aaa\naaa\naaa",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
 
     const text3 = "   ```\n   aaa\n    aaa\n  aaa\n   ```";
     const block3: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text3,
+        marker: "   ```",
         text: "aaa\n aaa\naaa",
       },
     ];
-    expect(parse(text3)).toEqual(block3);
+    const parser3 = new Parser();
+    expect(parser3.parse(text3)).toEqual(block3);
   });
   test("Four spaces indentation produces an indented code block", () => {
     const text = "    ```\n    aaa\n    ```";
@@ -889,50 +954,55 @@ describe("Fenced code blocks", () => {
         text: "```\naaa\n```",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Closing fences may be indented by 0-3 spaces, and their indentation need not match that of the opening fence", () => {
     const text = "```\naaa\n  ```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "aaa",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
 
     const text2 = "   ```\naaa\n  ```";
     const block2: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text2,
+        marker: "   ```",
         text: "aaa",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
   test("This is not a closing fence, because it is indented 4 spaces", () => {
     const text = "```\naaa\n    ```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "aaa\n    ```",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Code fences (opening and closing) cannot contain internal spaces", () => {
     const text2 = "~~~~~~\naaa\n~~~ ~~";
     const block2: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text2,
+        marker: "~~~~~~",
         text: "aaa\n~~~ ~~",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
   });
   test("Fenced code blocks can interrupt paragraphs, and can be followed directly by paragraphs, without a blank line between", () => {
     const text = "foo\n```\nbar\n```\nbaz";
@@ -943,7 +1013,7 @@ describe("Fenced code blocks", () => {
       },
       {
         type: "fenced-code-block",
-        raw: "```\nbar\n```",
+        marker: "```",
         text: "bar",
       },
       {
@@ -951,7 +1021,8 @@ describe("Fenced code blocks", () => {
         text: "baz",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Other blocks can also occur before and after fenced code blocks without an intervening blank line", () => {
     const text = "foo\n---\n~~~\nbar\n~~~\n# baz";
@@ -964,7 +1035,7 @@ describe("Fenced code blocks", () => {
       {
         type: "fenced-code-block",
         text: "bar",
-        raw: "~~~\nbar\n~~~",
+        marker: "~~~",
       },
       {
         type: "heading",
@@ -972,65 +1043,71 @@ describe("Fenced code blocks", () => {
         level: 1,
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("An info string can be provided after the opening code fence.", () => {
     const text = "```ruby\ndef foo(x)\n  return 3\nend\n```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "def foo(x)\n  return 3\nend",
         info: "ruby",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
 
     const text2 =
       "~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~";
     const block2: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text2,
+        marker: "~~~~",
         text: "def foo(x)\n  return 3\nend",
         info: "ruby startline=3 $%@#$",
       },
     ];
-    expect(parse(text2)).toEqual(block2);
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
 
     const text3 = "````;\n````";
     const block3: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text3,
+        marker: "````",
         text: "",
         info: ";",
       },
     ];
-    expect(parse(text3)).toEqual(block3);
+    const parser3 = new Parser();
+    expect(parser3.parse(text3)).toEqual(block3);
   });
   test("Info strings for tilde code blocks can contain backticks and tildes", () => {
     const text = "~~~ aa ``` ~~~\nfoo\n~~~";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "~~~",
         text: "foo",
         info: "aa ``` ~~~",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Closing code fences cannot have info strings", () => {
     const text = "```\n```aaa\n```";
     const block: Block[] = [
       {
         type: "fenced-code-block",
-        raw: text,
+        marker: "```",
         text: "```aaa",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
 });
 
@@ -1048,7 +1125,8 @@ describe("Blank lines", () => {
         text: "aaa",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
   test("Blank lines at the beginning and end of the document are also ignored.", () => {
     const text = "  \n\naaa\n  \n\n# aaa\n\n  ";
@@ -1063,6 +1141,7 @@ describe("Blank lines", () => {
         text: "aaa",
       },
     ];
-    expect(parse(text)).toEqual(block);
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
   });
 });

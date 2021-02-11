@@ -1,4 +1,11 @@
-export type Block = LeafBlock;
+export type Block = LeafBlock | ContainerBlock;
+
+type ContainerBlock = BlockQuote;
+
+interface BlockQuote {
+  type: "block-quote";
+  children: Block[];
+}
 
 type LeafBlock =
   | Paragraph
@@ -27,12 +34,9 @@ interface IndentedCodeBlock {
   text: string;
 }
 
-export interface FencedCodeBlock extends BlockBase {
+interface FencedCodeBlock {
   type: "fenced-code-block";
   text: string;
+  marker: string;
   info?: string;
-}
-
-interface BlockBase {
-  raw: string;
 }
