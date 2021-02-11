@@ -1145,3 +1145,453 @@ describe("Blank lines", () => {
     expect(parser.parse(text)).toEqual(block);
   });
 });
+
+describe("Block quotes", () => {
+  test("simple", () => {
+    const text = "> # Foo\n> bar\n> baz";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "heading",
+            level: 1,
+            text: "Foo",
+          },
+          {
+            type: "paragraph",
+            text: "bar\nbaz",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("The spaces after the `>` characters can be omitted", () => {
+    const text = "># Foo\n>bar\n> baz";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "heading",
+            level: 1,
+            text: "Foo",
+          },
+          {
+            type: "paragraph",
+            text: "bar\nbaz",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("The `>` characters can be indented 1-3 spaces", () => {
+    const text = "   ># Foo\n   > bar\n > baz";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "heading",
+            level: 1,
+            text: "Foo",
+          },
+          {
+            type: "paragraph",
+            text: "bar\nbaz",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("Four spaces gives us a code block", () => {
+    const text = "    > # Foo\n    > bar\n    > baz";
+    const block: Block[] = [
+      {
+        type: "indented-code-block",
+        text: "> # Foo\n> bar\n> baz",
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("The Laziness clause allows us to omit the > before paragraph continuation text", () => {
+    const text = "> # Foo\n> bar\nbaz";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "heading",
+            level: 1,
+            text: "Foo",
+          },
+          {
+            type: "paragraph",
+            text: "bar\nbaz",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("A block quote can contain some lazy and some non-lazy continuation lines", () => {
+    const text = "> bar\nbaz\n> foo";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "paragraph",
+            text: "bar\nbaz\nfoo",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("Laziness only applies to lines that would have been continuations of paragraphs had they been prepended with block quote markers", () => {
+    const text = "> foo\n---";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "paragraph",
+            text: "foo",
+          },
+        ],
+      },
+      {
+        type: "thematic-break",
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("we can’t omit the > in front of subsequent lines of an indented or fenced code block", () => {
+    const text = ">     foo\n    bar";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "indented-code-block",
+            text: "foo",
+          },
+        ],
+      },
+      {
+        type: "indented-code-block",
+        text: "bar",
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+
+    const text2 = "> ```\nfoo\n```";
+    const block2: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "fenced-code-block",
+            marker: "```",
+            text: "",
+          },
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "foo",
+      },
+      {
+        type: "fenced-code-block",
+        marker: "```",
+        text: "",
+      },
+    ];
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
+  });
+  test("we have a lazy continuation line", () => {
+    const text = "> foo\n    - bar";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "paragraph",
+            text: "foo\n- bar",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("it can be empty", () => {
+    const text = ">";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+
+    const text2 = ">\n>  \n> ";
+    const block2: Block[] = [
+      {
+        type: "block-quote",
+        children: [],
+      },
+    ];
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
+  });
+  test("A block quote can have initial or final blank lines", () => {
+    const text = ">\n> foo\n>  ";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "paragraph",
+            text: "foo",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("A blank line always separates block quotes", () => {
+    const text = "> foo\n\n> bar";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "foo" }],
+      },
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "bar" }],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("Consecutiveness means that if we put these block quotes together, we get a single block quote", () => {
+    const text = "> foo\n> bar";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "foo\nbar" }],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("To get a block quote with two paragraphs, use", () => {
+    const text = "> foo\n>\n> bar";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          { type: "paragraph", text: "foo" },
+          { type: "paragraph", text: "bar" },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("Block quotes can interrupt paragraphs", () => {
+    const text = "foo\n> bar";
+    const block: Block[] = [
+      {
+        type: "paragraph",
+        text: "foo",
+      },
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "paragraph",
+            text: "bar",
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("blank lines are not needed before or after block quotes", () => {
+    const text = "> aaa\n***\n> bbb";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "aaa" }],
+      },
+      {
+        type: "thematic-break",
+      },
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "bbb" }],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("because of laziness, a blank line is needed between a block quote and a following paragraph", () => {
+    const text = "> bar\nbaz";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "bar\nbaz" }],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+
+    const text2 = "> bar\n\nbaz";
+    const block2: Block[] = [
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "bar" }],
+      },
+      {
+        type: "paragraph",
+        text: "baz",
+      },
+    ];
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
+
+    const text3 = "> bar\n>\nbaz";
+    const block3: Block[] = [
+      {
+        type: "block-quote",
+        children: [{ type: "paragraph", text: "bar" }],
+      },
+      {
+        type: "paragraph",
+        text: "baz",
+      },
+    ];
+    const parser3 = new Parser();
+    expect(parser3.parse(text3)).toEqual(block3);
+  });
+  test("nested", () => {
+    const text = "> > > foo";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "block-quote",
+            children: [
+              {
+                type: "block-quote",
+                children: [
+                  {
+                    type: "paragraph",
+                    text: "foo",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("It is a consequence of the Laziness rule that any number of initial >s may be omitted on a continuation line of a nested block quote", () => {
+    const text = "> > > foo\nbar";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "block-quote",
+            children: [
+              {
+                type: "block-quote",
+                children: [
+                  {
+                    type: "paragraph",
+                    text: "foo\nbar",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+
+    const text2 = ">>> foo\n> bar\n>>baz";
+    const block2: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "block-quote",
+            children: [
+              {
+                type: "block-quote",
+                children: [
+                  {
+                    type: "paragraph",
+                    text: "foo\nbar\nbaz",
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
+  });
+  test("When including an indented code block in a block quote, remember that the block quote marker includes both the > and a following space.", () => {
+    const text = ">     code\n\n>    not code";
+    const block: Block[] = [
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "indented-code-block",
+            text: "code"
+          }
+        ],
+      },
+      {
+        type: "block-quote",
+        children: [
+          {
+            type: "paragraph",
+            text: "not code"
+          }
+        ]
+      }
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  })
+});
