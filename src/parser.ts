@@ -268,6 +268,26 @@ class Parser {
         state.openBlock?.type === "bullet-list" &&
         state.childrenState != null
       ) {
+        // 子itemを追加
+        if (
+          state.listItemRequiredIndentLength != null &&
+          isListSubItem(line, state.listItemRequiredIndentLength)
+        ) {
+          return {
+            ...state,
+            childrenState: {
+              ...state.childrenState,
+              childrenState: this.parseLine(
+                line.replace(
+                  new RegExp(`^ {${state.listItemRequiredIndentLength}}`),
+                  ""
+                ),
+                state.childrenState.childrenState
+              ),
+            },
+          };
+        }
+        // 新しくlist itemを追加
         return {
           ...state,
           childrenState: {
@@ -281,7 +301,7 @@ class Parser {
         };
       }
       return {
-        ...state,
+        ...this.close(state),
         openBlock: {
           type: "bullet-list",
           children: [],
@@ -459,6 +479,14 @@ function isListItem(line: string, requiredIndent?: number): boolean {
   }
   const match = line.match(new RegExp(`^ {${requiredIndent},}`));
   return match != null;
+}
+
+function isListSubItem(line: string, requiredIndent: number) {
+  const match = line.match(/^(?<spaces> {0,})- /);
+  if (match == null || match.groups == null) {
+    return false;
+  }
+  return match.groups.spaces.length >= requiredIndent;
 }
 
 export default Parser;
