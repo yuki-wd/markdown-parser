@@ -1577,8 +1577,8 @@ describe("Block quotes", () => {
         children: [
           {
             type: "indented-code-block",
-            text: "code"
-          }
+            text: "code",
+          },
         ],
       },
       {
@@ -1586,12 +1586,280 @@ describe("Block quotes", () => {
         children: [
           {
             type: "paragraph",
-            text: "not code"
-          }
-        ]
-      }
+            text: "not code",
+          },
+        ],
+      },
     ];
     const parser = new Parser();
     expect(parser.parse(text)).toEqual(block);
-  })
+  });
+});
+
+describe("List items", () => {
+  test("simple ordered list", () => {
+    const text = "1. foo";
+    const block: Block[] = [
+      {
+        type: "ordered-list",
+        delimiter: "period",
+        start: 1,
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "foo",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("multiple ordered list items", () => {
+    const text = "1. foo\n2. bar";
+    const block: Block[] = [
+      {
+        type: "ordered-list",
+        delimiter: "period",
+        start: 1,
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "foo",
+              },
+            ],
+          },
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "bar",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("simple bullet list", () => {
+    const text = "- foo";
+    const block: Block[] = [
+      {
+        type: "bullet-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "foo",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("Bullet list with multiple list items", () => {
+    const text = "- foo\n- bar";
+    const block: Block[] = [
+      {
+        type: "bullet-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "foo",
+              },
+            ],
+          },
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "bar",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
+  test("how far content must be indented to be put under the list item", () => {
+    const text = "- one\n\n two";
+    const block: Block[] = [
+      {
+        type: "bullet-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "one",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "two",
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+
+    const text2 = "- one\n\n  two";
+    const block2: Block[] = [
+      {
+        type: "bullet-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "one",
+              },
+              {
+                type: "paragraph",
+                text: "two",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser2 = new Parser();
+    expect(parser2.parse(text2)).toEqual(block2);
+
+    const text3 = " -    one\n\n     two";
+    const block3: Block[] = [
+      {
+        type: "bullet-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "one",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "indented-code-block",
+        text: " two",
+      },
+    ];
+    const parser3 = new Parser();
+    expect(parser3.parse(text3)).toEqual(block3);
+
+    const text4 = " -    one\n\n      two";
+    const block4: Block[] = [
+      {
+        type: "bullet-list",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "one",
+              },
+              {
+                type: "paragraph",
+                text: "two",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser4 = new Parser();
+    expect(parser4.parse(text4)).toEqual(block4);
+  });
+  // test("For example, let Ls be the lines", () => {
+  //   const text =
+  //     "A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.";
+  //   const block: Block[] = [
+  //     {
+  //       type: "paragraph",
+  //       text: "A paragraph\nwith two lines.",
+  //     },
+  //     {
+  //       type: "indented-code-block",
+  //       text: "indented code",
+  //     },
+  //     {
+  //       type: "block-quote",
+  //       children: [
+  //         {
+  //           type: "paragraph",
+  //           text: "A block quote.",
+  //         },
+  //       ],
+  //     },
+  //   ];
+  //   const parser = new Parser();
+  //   expect(parser.parse(text)).toEqual(block);
+  // });
+  // test("And let M be the marker 1., and N = 2. Then rule #1 says that the following is an ordered list item with start number 1, and the same contents as Ls", () => {
+  //   const text =
+  //     "1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.";
+  //   const block: Block[] = [
+  //     {
+  //       type: "ordered-list",
+  //       start: 1,
+  //       delimiter: "period",
+  //       children: [
+  //         {
+  //           type: "list-item",
+  //           children: [
+  //             {
+  //               type: "paragraph",
+  //               text: "A paragraph\nwith two lines.",
+  //             },
+  //             {
+  //               type: "indented-code-block",
+  //               text: "indented code",
+  //             },
+  //             {
+  //               type: "block-quote",
+  //               children: [
+  //                 {
+  //                   type: "paragraph",
+  //                   text: "A block quote.",
+  //                 },
+  //               ],
+  //             },
+  //           ],
+  //         },
+  //       ],
+  //     },
+  //   ];
+  //   const parser = new Parser();
+  //   expect(parser.parse(text)).toEqual(block);
+  // });
 });

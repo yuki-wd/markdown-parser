@@ -1,9 +1,26 @@
 export type Block = LeafBlock | ContainerBlock;
 
-type ContainerBlock = BlockQuote;
+export type ContainerBlock = BlockQuote | OrderedList | ListItem | BulletList;
 
 interface BlockQuote {
   type: "block-quote";
+  children: Block[];
+}
+
+interface OrderedList {
+  type: "ordered-list";
+  start: number;
+  delimiter: "period";
+  children: Block[];
+}
+
+interface BulletList {
+  type: "bullet-list";
+  children: Block[];
+}
+
+export interface ListItem {
+  type: "list-item";
   children: Block[];
 }
 
