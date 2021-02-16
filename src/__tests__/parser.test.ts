@@ -1844,4 +1844,61 @@ describe("List items", () => {
     const parser = new Parser();
     expect(parser.parse(text)).toEqual(block);
   });
+  test("nested ordered list", () => {
+    const text = "1. item1\n   1. subitem1\n   2. subitem2\n2. item2";
+    const block: Block[] = [
+      {
+        type: "ordered-list",
+        start: 1,
+        delimiter: "period",
+        children: [
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "item1",
+              },
+              {
+                type: "ordered-list",
+                start: 1,
+                delimiter: "period",
+                children: [
+                  {
+                    type: "list-item",
+                    children: [
+                      {
+                        type: "paragraph",
+                        text: "subitem1",
+                      },
+                    ],
+                  },
+                  {
+                    type: "list-item",
+                    children: [
+                      {
+                        type: "paragraph",
+                        text: "subitem2",
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            type: "list-item",
+            children: [
+              {
+                type: "paragraph",
+                text: "item2",
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const parser = new Parser();
+    expect(parser.parse(text)).toEqual(block);
+  });
 });

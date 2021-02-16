@@ -128,7 +128,7 @@ class Parser {
       state.openBlock?.type !== "paragraph" &&
       state.childrenState?.openBlock?.type !== "paragraph" &&
       state.openBlock?.type !== "fenced-code-block" &&
-      !isListItem(line, state.listItemRequiredIndentLength)
+      !isListItem(line, state)
     ) {
       const text = line.replace(/^ {0,4}/, "");
       if (state.openBlock?.type === "indented-code-block") {
@@ -214,13 +214,38 @@ class Parser {
 
     // Ordered lists
     const orderdListMatch = line.match(
-      /^(?<start>[0-9]{1,9})(?<delimiter>[.]) (?<text>.+)$/
+      /^(?<beforeSpace> {0,3})(?<start>[0-9]{1,9})(?<delimiter>[.])(?<space> {1})(?<text>.+)$/
     );
     if (orderdListMatch?.groups != null) {
+      const {
+        beforeSpace,
+        start,
+        delimiter,
+        space,
+        text,
+      } = orderdListMatch.groups;
       if (
         state.openBlock?.type === "ordered-list" &&
         state.childrenState != null
       ) {
+        if (
+          state.listItemRequiredIndentLength != null &&
+          isListSubItem(line, state.listItemRequiredIndentLength)
+        ) {
+          return {
+            ...state,
+            childrenState: {
+              ...state.childrenState,
+              childrenState: this.parseLine(
+                line.replace(
+                  new RegExp(`^ {${state.listItemRequiredIndentLength}}`),
+                  ""
+                ),
+                state.childrenState.childrenState
+              ),
+            },
+          };
+        }
         const closedChildrenState = this.close(state.childrenState);
         return {
           ...state,
@@ -230,16 +255,18 @@ class Parser {
               type: "list-item",
               children: [],
             },
-            childrenState: this.parseLine(orderdListMatch.groups.text),
+            childrenState: this.parseLine(text),
           },
         };
       }
+      const requiredIndentLength =
+        beforeSpace.length + start.length + delimiter.length + space.length;
       return {
         ...this.close(state),
         openBlock: {
           type: "ordered-list",
           delimiter: "period",
-          start: Number(orderdListMatch.groups.start),
+          start: Number(start),
           children: [],
         },
         childrenState: {
@@ -248,8 +275,9 @@ class Parser {
             type: "list-item",
             children: [],
           },
-          childrenState: this.parseLine(orderdListMatch.groups.text),
+          childrenState: this.parseLine(text),
         },
+        listItemRequiredIndentLength: requiredIndentLength,
       };
     }
 
@@ -473,16 +501,24 @@ function isContainer(block: Block): block is ContainerBlock {
  * @param line
  * @param requiredIndent 必要インデント数
  */
-function isListItem(line: string, requiredIndent?: number): boolean {
-  if (requiredIndent == null) {
+function isListItem(line: string, state: State): boolean {
+  if (
+    state.openBlock?.type !== "ordered-list" &&
+    state.openBlock?.type !== "bullet-list"
+  ) {
     return false;
   }
-  const match = line.match(new RegExp(`^ {${requiredIndent},}`));
+  if (state.listItemRequiredIndentLength == null) {
+    return false;
+  }
+  const match = line.match(
+    new RegExp(`^ {${state.listItemRequiredIndentLength},}`)
+  );
   return match != null;
 }
 
 function isListSubItem(line: string, requiredIndent: number) {
-  const match = line.match(/^(?<spaces> {0,})- /);
+  const match = line.match(/^(?<spaces> {0,})/);
   if (match == null || match.groups == null) {
     return false;
   }
