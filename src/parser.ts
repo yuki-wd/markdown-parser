@@ -1,4 +1,4 @@
-import { Block } from "./types";
+import { Block, ContainerBlock } from "./types";
 
 const FENCED_CODE_BLOCK_REGEX = /^(?<marker> {0,3}(?:`{3,}|~{3,})) {0,}(?<info>.+)?$/;
 
@@ -6,6 +6,10 @@ interface State {
   ast: Block[];
   openBlock?: Block;
   childrenState?: State;
+  /**
+   * list-itemのchildrenになるために必要なindent数
+   */
+  listItemRequiredIndentLength?: number;
 }
 
 class Parser {
@@ -48,6 +52,19 @@ class Parser {
           openBlock: {
             ...state.openBlock,
             text: [state.openBlock.text, line].join("\n"),
+          },
+        };
+      }
+      if (
+        state.openBlock?.type === "bullet-list" &&
+        state.childrenState?.childrenState != null
+      ) {
+        const a = this.close(state.childrenState.childrenState);
+        return {
+          ...state,
+          childrenState: {
+            ...state.childrenState,
+            childrenState: a,
           },
         };
       }
@@ -110,7 +127,8 @@ class Parser {
       line.match(/^ {4,}.+/) &&
       state.openBlock?.type !== "paragraph" &&
       state.childrenState?.openBlock?.type !== "paragraph" &&
-      state.openBlock?.type !== "fenced-code-block"
+      state.openBlock?.type !== "fenced-code-block" &&
+      !isListItem(line, state)
     ) {
       const text = line.replace(/^ {0,4}/, "");
       if (state.openBlock?.type === "indented-code-block") {
@@ -165,8 +183,7 @@ class Parser {
     const blockQuotesMatch = line.match(/^ {0,3}> {0,1}(?<text>.*)$/);
     if (
       blockQuotesMatch?.groups != null &&
-      state.openBlock?.type !== "fenced-code-block" &&
-      state.openBlock?.type !== "indented-code-block"
+      state.openBlock?.type !== "fenced-code-block"
     ) {
       if (state.openBlock?.type !== "block-quote") {
         const childrenState = this.parseLine(blockQuotesMatch.groups.text, {
@@ -192,6 +209,140 @@ class Parser {
           children: childrenState.ast,
         },
         childrenState: childrenState,
+      };
+    }
+
+    // Ordered lists
+    const orderdListMatch = line.match(
+      /^(?<beforeSpace> {0,3})(?<start>[0-9]{1,9})(?<delimiter>[.])(?<space> {1})(?<text>.+)$/
+    );
+    if (orderdListMatch?.groups != null) {
+      const {
+        beforeSpace,
+        start,
+        delimiter,
+        space,
+        text,
+      } = orderdListMatch.groups;
+      if (
+        state.openBlock?.type === "ordered-list" &&
+        state.childrenState != null
+      ) {
+        if (
+          state.listItemRequiredIndentLength != null &&
+          isListSubItem(line, state.listItemRequiredIndentLength)
+        ) {
+          return {
+            ...state,
+            childrenState: {
+              ...state.childrenState,
+              childrenState: this.parseLine(
+                line.replace(
+                  new RegExp(`^ {${state.listItemRequiredIndentLength}}`),
+                  ""
+                ),
+                state.childrenState.childrenState
+              ),
+            },
+          };
+        }
+        const closedChildrenState = this.close(state.childrenState);
+        return {
+          ...state,
+          childrenState: {
+            ...closedChildrenState,
+            openBlock: {
+              type: "list-item",
+              children: [],
+            },
+            childrenState: this.parseLine(text),
+          },
+        };
+      }
+      const requiredIndentLength =
+        beforeSpace.length + start.length + delimiter.length + space.length;
+      return {
+        ...this.close(state),
+        openBlock: {
+          type: "ordered-list",
+          delimiter: "period",
+          start: Number(start),
+          children: [],
+        },
+        childrenState: {
+          ast: [],
+          openBlock: {
+            type: "list-item",
+            children: [],
+          },
+          childrenState: this.parseLine(text),
+        },
+        listItemRequiredIndentLength: requiredIndentLength,
+      };
+    }
+
+    // BulletList
+    const bulletListMatch = line.match(
+      /^(?<beforeSpace> {0,3})(?<marker>[-+*])(?<afterSpace> )(?<text>(?<space> {0,})?.+)$/
+    );
+    if (bulletListMatch?.groups != null) {
+      const text = bulletListMatch.groups.text;
+      const requiredIndentLength =
+        (bulletListMatch.groups.beforeSpace?.length ?? 0) +
+        bulletListMatch.groups.marker.length +
+        bulletListMatch.groups.afterSpace.length +
+        (bulletListMatch.groups.space?.length ?? 0);
+      if (
+        state.openBlock?.type === "bullet-list" &&
+        state.childrenState != null
+      ) {
+        // 子itemを追加
+        if (
+          state.listItemRequiredIndentLength != null &&
+          isListSubItem(line, state.listItemRequiredIndentLength)
+        ) {
+          return {
+            ...state,
+            childrenState: {
+              ...state.childrenState,
+              childrenState: this.parseLine(
+                line.replace(
+                  new RegExp(`^ {${state.listItemRequiredIndentLength}}`),
+                  ""
+                ),
+                state.childrenState.childrenState
+              ),
+            },
+          };
+        }
+        // 新しくlist itemを追加
+        return {
+          ...state,
+          childrenState: {
+            ...this.close(state.childrenState),
+            openBlock: {
+              type: "list-item",
+              children: [],
+            },
+            childrenState: this.parseLine(text),
+          },
+        };
+      }
+      return {
+        ...this.close(state),
+        openBlock: {
+          type: "bullet-list",
+          children: [],
+        },
+        childrenState: {
+          ast: [],
+          openBlock: {
+            type: "list-item",
+            children: [],
+          },
+          childrenState: this.parseLine(text),
+        },
+        listItemRequiredIndentLength: requiredIndentLength,
       };
     }
 
@@ -233,6 +384,35 @@ class Parser {
         },
       };
     }
+    /**
+     * list markerの後ろのwhite spaceの数+1のインデントがあれば
+     * open状態のlist itemのchildrenに追加できる
+     *
+     * - white spaceの数を記録しておく必要がある
+     */
+    const indentRegex = new RegExp(
+      `^ {${state.listItemRequiredIndentLength},}`
+    );
+    if (
+      state.openBlock?.type === "bullet-list" &&
+      state.listItemRequiredIndentLength != null &&
+      state.childrenState?.childrenState != null &&
+      line.match(indentRegex)
+    ) {
+      return {
+        ...state,
+        childrenState: {
+          ...state.childrenState,
+          childrenState: this.parseLine(
+            line.replace(
+              new RegExp(`^ {${state.listItemRequiredIndentLength}}`),
+              ""
+            ),
+            state.childrenState.childrenState
+          ),
+        },
+      };
+    }
     return {
       ...this.close(state),
       openBlock: {
@@ -269,6 +449,7 @@ class Parser {
           text: newText,
         }),
         openBlock: undefined,
+        childrenState: undefined,
       };
     }
     if (state.openBlock.type === "fenced-code-block") {
@@ -284,25 +465,64 @@ class Parser {
           text: newText,
         }),
         openBlock: undefined,
+        childrenState: undefined,
       };
     }
-    if (state.openBlock.type === "block-quote") {
-      if (state.childrenState != null) {
-        const closedChildren = this.close(state.childrenState);
-        return {
-          ast: state.ast.concat({
-            ...state.openBlock,
-            children: closedChildren.ast,
-          }),
-          openBlock: undefined,
-        };
-      }
+    if (state.childrenState != null && isContainer(state.openBlock)) {
+      const closedChildren = this.close(state.childrenState);
+      return {
+        ast: state.ast.concat({
+          ...state.openBlock,
+          children: closedChildren.ast,
+        }),
+        openBlock: undefined,
+        childrenState: undefined,
+      };
     }
     return {
       ast: state.ast.concat(state.openBlock),
       openBlock: undefined,
+      childrenState: undefined,
     };
   }
+}
+
+function isContainer(block: Block): block is ContainerBlock {
+  return (
+    block.type === "block-quote" ||
+    block.type === "ordered-list" ||
+    block.type === "list-item" ||
+    block.type === "bullet-list"
+  );
+}
+
+/**
+ * openBlockがListのとき、必要数インデントがある場合はリストアイテムになる
+ * @param line
+ * @param requiredIndent 必要インデント数
+ */
+function isListItem(line: string, state: State): boolean {
+  if (
+    state.openBlock?.type !== "ordered-list" &&
+    state.openBlock?.type !== "bullet-list"
+  ) {
+    return false;
+  }
+  if (state.listItemRequiredIndentLength == null) {
+    return false;
+  }
+  const match = line.match(
+    new RegExp(`^ {${state.listItemRequiredIndentLength},}`)
+  );
+  return match != null;
+}
+
+function isListSubItem(line: string, requiredIndent: number) {
+  const match = line.match(/^(?<spaces> {0,})/);
+  if (match == null || match.groups == null) {
+    return false;
+  }
+  return match.groups.spaces.length >= requiredIndent;
 }
 
 export default Parser;
